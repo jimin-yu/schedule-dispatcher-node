@@ -1,0 +1,12 @@
+{
+  "name": "scheduler-node",
+  "version": "1.0.0",
+  "description": "simple job scheduler with node",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jimin",
+  "license": "ISC",
+  "type": "module"
+}
