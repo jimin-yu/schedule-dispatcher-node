@@ -1,26 +1,18 @@
 import DynamoDBService from "./services/dynamodb_service.js";
 import Worker from './job_dispatcher/worker.js'
 
+const ddbService = new DynamoDBService;
+const worker = new Worker
 
-
-function createSampleSchedules(){
-  const itemCount = 20;
+function createSampleSchedules(itemCount){
   Array(itemCount)
   .fill(0)
   .forEach(async ()=>await ddbService.addJob())
 }
 
-const ddbService = new DynamoDBService;
-const worker = new Worker
-// ddbService.addJob()
-
-
-// worker.dispatchOverdue(6)
-
 async function main(){
   const partitions = [0,1,2,3,4,5,6,7,8,9,10]
-  // worker.start(partitions)
-  createSampleSchedules()
+  worker.start(partitions)
 
   // const {schedules, _} = await ddbService.getOverdueJobs(schedule.shardId)
   // console.log(schedules)
@@ -31,4 +23,6 @@ async function main(){
   // console.log(r)
 }
 
+
+createSampleSchedules(20)
 main()
