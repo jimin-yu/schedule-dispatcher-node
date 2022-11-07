@@ -10,6 +10,7 @@ class Worker{
     console.log(`QUEUE: ${schedule.jobSpec.jobParams}`)
     console.log(`JOB: ${schedule.jobSpec.jobClass}`)
     console.log(`PARAMS: ${schedule.jobSpec.jobParams}`)
+    return this.ddbService.deleteDispatchedJob(schedule)
   }
 
   async dispatchOverdue(partition){
@@ -17,13 +18,14 @@ class Worker{
       this.ddbService
       .getOverdueJobs(partition)
       .then(({schedules, shouldImmediatelyQueryAgain})=>{
-        const promises = schedules.map((schedule)=>{
-          this.ddbService
+        const promises = schedules.map(async (schedule)=>{
+          return this.ddbService
           .updateStatus(schedule, 'SCHEDULED', 'ACQUIRED')
-          .then(this.dispatchToDestination)
+          .then((schedule) => this.dispatchToDestination.call(this, schedule))
         })
         Promise.all(promises)
         .then(()=>{
+          console.log("all schedule dispatch promise done..")
           resolve(shouldImmediatelyQueryAgain);
         })
       })

@@ -1,7 +1,8 @@
 import { 
   DynamoDBClient, 
   PutItemCommand, 
-  UpdateItemCommand, 
+  UpdateItemCommand,
+  DeleteItemCommand, 
   QueryCommand 
 } from "@aws-sdk/client-dynamodb";
 import { getRandomInt, makeSampleJobPayload } from '../common/utils.js'
@@ -18,23 +19,20 @@ class DynamoDBService {
     });
   }
 
-  // 임시 - 테스트를 위한 random item put
-  async addJob(){
+  makePutItemCommand(schedule){
     const putItemRequest = {
       TableName: this.TableName,
       Item: {
-        shard_id: { S: `${getRandomInt(this.maxShardId)}` },
-        date_token: {S: `${Date.now()}#${uuidv4()}`},
-        job_status: {S: 'SCHEDULED'},
-        job_spec: {S: `${JSON.stringify(makeSampleJobPayload())}`}
+        shard_id: {S: schedule.shardId},
+        date_token: {S: schedule.dateToken},
+        job_status: {S: schedule.jobStatus},
+        job_spec: {S: JSON.stringify(schedule.jobSpec)}
       }
     }
-    const command = new PutItemCommand(putItemRequest);
-    const response = await this.client.send(command);
-    console.log(response)
+    return new PutItemCommand(putItemRequest)
   }
 
-  makeQueryRequestForOverdueJobs(partition, timestamp, jobStatus){
+  makeOverdueJobsQueryCommand(partition, timestamp, jobStatus){
     const input = {
       TableName: this.TableName,
       KeyConditionExpression: 'shard_id = :shardId and date_token < :dateToken',
@@ -48,21 +46,8 @@ class DynamoDBService {
     }
     return new QueryCommand(input)
   }
-  
-  async getOverdueJobs(partition){
-    const timestamp = Date.now()
-    const command = this.makeQueryRequestForOverdueJobs(partition, timestamp, 'SCHEDULED');
-    return this.client
-    .send(command)
-    .then((response)=>{
-      return {
-        schedules: response.Items.map((item)=>new Schedule(item)),
-        shouldImmediatelyQueryAgain: response.Count == this.queryLimit || !!response.LastEvaluatedKey
-      }
-    })
-  }
 
-  async updateStatus(schedule, oldStatus, newStatus){
+  makeUpdateItemCommand(schedule, oldStatus, newStatus){
     const updateItemRequest = {
       TableName: this.TableName,
       Key: {
@@ -77,7 +62,60 @@ class DynamoDBService {
       UpdateExpression: 'SET job_status = :newStatus',
       ReturnValues: 'UPDATED_NEW'
     }
-    const command = new UpdateItemCommand(updateItemRequest);
+    return new UpdateItemCommand(updateItemRequest);
+  }
+
+  makeDeleteItemCommand(schedule){
+    const deleteItemRequest = {
+      TableName: this.TableName,
+      Key: {
+        shard_id: {S: schedule.shardId},
+        date_token: {S: schedule.dateToken}
+      },
+      ConditionExpression: 'job_status = :acquired',
+      ExpressionAttributeValues: {
+        ':acquired': {S: 'ACQUIRED'}
+      }
+    }
+    return new DeleteItemCommand(deleteItemRequest)
+  }
+
+  decodeSchedule(ddbItem){
+    const shardId = ddbItem.shard_id.S
+    const dateToken = ddbItem.date_token.S
+    const jobStatus = ddbItem.job_status.S
+    const jobSpec = JSON.parse(ddbItem.job_spec.S)
+    return new Schedule(shardId, dateToken, jobStatus, jobSpec)
+  }
+
+  // 임시 - 테스트를 위한 random item put
+  async addJob(){
+    const sampleSchedule = new Schedule(
+      getRandomInt(this.maxShardId),
+      `${Date.now()}#${uuidv4()}`,
+      'SCHEDULED',
+      makeSampleJobPayload()
+    )
+    const command = this.makePutItemCommand(sampleSchedule);
+    return this.client
+    .send(command)
+    .then(()=>sampleSchedule);
+  }
+
+  async getOverdueJobs(partition){
+    const command = this.makeOverdueJobsQueryCommand(partition, Date.now(), 'SCHEDULED');
+    return this.client
+    .send(command)
+    .then((response)=>{
+      return {
+        schedules: response.Items.map(this.decodeSchedule),
+        shouldImmediatelyQueryAgain: response.Count == this.queryLimit || !!response.LastEvaluatedKey
+      }
+    })
+  }
+
+  async updateStatus(schedule, oldStatus, newStatus){
+    const command = this.makeUpdateItemCommand(schedule, oldStatus, newStatus)
     return this.client
     .send(command)
     .then((response)=>{
@@ -87,7 +125,11 @@ class DynamoDBService {
     })
   }
 
-
+  async deleteDispatchedJob(schedule){
+    const command = this.makeDeleteItemCommand(schedule)
+    return this.client
+    .send(command)
+  }
 }
 
 // export { DynamoDBService };

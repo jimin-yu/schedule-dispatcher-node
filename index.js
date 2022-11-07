@@ -9,8 +9,17 @@ const worker = new Worker
 // worker.dispatchOverdue(6)
 
 async function main(){
-  const immediate = await worker.dispatchOverdue(0)
+  const schedule = await ddbService.addJob()
+  const immediate = await worker.dispatchOverdue(schedule.shardId)
   console.log(immediate)
+
+  // const {schedules, _} = await ddbService.getOverdueJobs(schedule.shardId)
+  // console.log(schedules)
+
+  // const r = await ddbService
+  // .updateStatus(schedule, 'SCHEDULED', 'ACQUIRED')
+  // .then((schedule) => worker.dispatchToDestination.call(worker, schedule))
+  // console.log(r)
 }
 
 main()
