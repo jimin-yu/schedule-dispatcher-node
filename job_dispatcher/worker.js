@@ -63,7 +63,8 @@ class Worker{
     // TODO : post PartitionWorkerIterationEvent event
     
     if(noDelay){
-      this.scanGroup(partitions)
+      // this.scanGroup(partitions) => stack overflow...
+      setTimeout(()=>this.scanGroup(partitions), 0)
     }else{
       setTimeout(()=>this.scanGroup(partitions), 1000)
     }
