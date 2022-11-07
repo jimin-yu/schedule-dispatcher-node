@@ -8,5 +8,10 @@
   },
   "author": "jimin",
   "license": "ISC",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "log-node": "^8.0.3",
+    "uuid": "^9.0.0"
+  }
 }
