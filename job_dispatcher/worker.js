@@ -2,15 +2,20 @@ import DynamoDBService from "../services/dynamodb_service.js"
 
 class Worker{
   constructor(){
-    this.ddbService = new DynamoDBService
+    this.ddbService = new DynamoDBService;
+    this.scanTimes = new Map;
   }
   // 서비스 SQS에 넣기
   async dispatchToDestination(schedule){
-    console.log("== PUSH JOB TO DESTINATION QUEUE ==")
-    console.log(`QUEUE: ${schedule.jobSpec.jobParams}`)
-    console.log(`JOB: ${schedule.jobSpec.jobClass}`)
-    console.log(`PARAMS: ${schedule.jobSpec.jobParams}`)
-    return this.ddbService.deleteDispatchedJob(schedule)
+    const message = `
+    == PUSH JOB TO DESTINATION QUEUE ==
+    QUEUE: ${schedule.jobSpec.queueName}
+    JOB: ${schedule.jobSpec.jobClass}
+    PARAMS: ${schedule.jobSpec.jobParams}
+
+    `
+    console.log(message);
+    return this.ddbService.deleteDispatchedJob(schedule);
   }
 
   async dispatchOverdue(partition){
@@ -21,7 +26,7 @@ class Worker{
         const promises = schedules.map(async (schedule)=>{
           return this.ddbService
           .updateStatus(schedule, 'SCHEDULED', 'ACQUIRED')
-          .then((schedule) => this.dispatchToDestination.call(this, schedule))
+          .then(schedule => this.dispatchToDestination.call(this, schedule))
         })
         Promise.all(promises)
         .then(()=>{
@@ -34,6 +39,43 @@ class Worker{
         resolve(true);
       })
     })
+  }
+
+  async scanGroup(partitions){
+    let noDelay = false;
+
+    for(const partition of partitions){
+      const now = Date.now()
+
+      if(this.scanTimes.get(partition) < now){
+        const thisNoDelay = 
+        await this.dispatchOverdue(partition)
+        .then(scheduleImmediate=>{
+          const nextScan = scheduleImmediate ? Date.now() : Date.now() + 1000
+          this.scanTimes.set(partition, nextScan)
+          return scheduleImmediate
+        })
+        noDelay = noDelay || thisNoDelay
+      }else{
+        noDelay = true;
+      }
+    }
+    // TODO : post PartitionWorkerIterationEvent event
+    
+    if(noDelay){
+      this.scanGroup(partitions)
+    }else{
+      setTimeout(()=>this.scanGroup(partitions), 1000)
+    }
+  }
+
+  // start worker thread (entry point)
+  start(partitions){
+    const currentTimestamp = Date.now()
+    partitions.forEach(partition=>{
+      this.scanTimes.set(partition, currentTimestamp)
+    })
+    this.scanGroup(partitions)
   }
 }
 

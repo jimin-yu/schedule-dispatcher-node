@@ -9,9 +9,8 @@ const worker = new Worker
 // worker.dispatchOverdue(6)
 
 async function main(){
-  const schedule = await ddbService.addJob()
-  const immediate = await worker.dispatchOverdue(schedule.shardId)
-  console.log(immediate)
+  const partitions = [3,4]
+  worker.start(partitions)
 
   // const {schedules, _} = await ddbService.getOverdueJobs(schedule.shardId)
   // console.log(schedules)
