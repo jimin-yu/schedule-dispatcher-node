@@ -22,4 +22,8 @@ function sleep(delay) {
   while (new Date().getTime() < start + delay);
 }
 
-export { getRandomInt, makeSampleJobPayload, sleep };
+function createArrayMap(size){
+  return new Map([...Array(size).keys()].map(x => [x, []]));
+}
+
+export { getRandomInt, makeSampleJobPayload, sleep, createArrayMap };

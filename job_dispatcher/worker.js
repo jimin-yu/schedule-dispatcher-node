@@ -47,7 +47,7 @@ class Worker{
     for(const partition of partitions){
       const now = Date.now()
 
-      if(this.scanTimes.get(partition) < now){
+      if(this.scanTimes.get(partition) <= now){
         const thisNoDelay = 
         await this.dispatchOverdue(partition)
         .then(scheduleImmediate=>{
@@ -81,3 +81,9 @@ class Worker{
 }
 
 export default Worker
+// async function initialize ({partitions}){
+//   const worker = new Worker
+//   worker.start(partitions)
+// }
+
+// export default initialize
