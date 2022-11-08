@@ -1,5 +1,5 @@
 import DynamoDBService from "./services/dynamodb_service.js";
-import WorkerManager from "./job_dispatcher/worker_manager.js";
+// import WorkerManager from "./job_dispatcher/worker_manager.js";
 import Worker from  "./job_dispatcher/worker.js";
 
 const ddbService = new DynamoDBService;
@@ -12,12 +12,9 @@ function createSampleSchedules(itemCount){
 }
 
 async function main(){
-  const partitions = [4,5,6,7,8,9]
-  // const workerManager = new WorkerManager(partitions)
-  // workerManager.start()
+  const partitions = [1,2,3]
   worker.start(partitions)
 }
-
 
 // createSampleSchedules(30)
 main()

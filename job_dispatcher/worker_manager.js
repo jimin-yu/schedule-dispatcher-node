@@ -1,3 +1,4 @@
+// 사용 x
 import { Piscina } from 'piscina';
 import { AbortController } from 'abort-controller'
 import { createArrayMap } from '../common/utils.js';
@@ -35,7 +36,7 @@ export default class WorkerManager{
   }
 
   async start(){
-    // this.createWorkers(this.partitions);
-    await this.piscina.run({partitions: [1,2,3]})
+    this.createWorkers(this.partitions);
+    // await this.piscina.run({partitions: [1,2,3]})
   }
 }
